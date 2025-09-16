@@ -1,0 +1,113 @@
+Computer Networks - Comprehensive Syllabus
+
+Unit 1: Network Fundamentals
+- Introduction to Computer Networks
+- Network Goals and Applications
+- Network Hardware and Software
+- Network Types (LAN, MAN, WAN)
+- Network Topologies (Bus, Star, Ring, Mesh)
+- Transmission Media (Guided and Unguided)
+
+Unit 2: Network Models
+- OSI Reference Model
+- TCP/IP Model
+- Comparison of OSI and TCP/IP
+- Protocol Layering
+- Service Primitives
+- Relationship of Services to Protocols
+
+Unit 3: Physical Layer
+- Theoretical Basis for Data Communication
+- Guided Transmission Media
+- Wireless Transmission
+- Communication Satellites
+- Digital Modulation and Multiplexing
+- Public Switched Telephone Network
+
+Unit 4: Data Link Layer
+- Data Link Layer Design Issues
+- Error Detection and Correction
+- Elementary Data Link Protocols
+- Sliding Window Protocols
+- Protocol Verification
+- HDLC Protocol
+
+Unit 5: Medium Access Control
+- Channel Allocation Problem
+- Multiple Access Protocols
+- Ethernet and IEEE 802.3
+- Wireless LANs (IEEE 802.11)
+- Bluetooth Technology
+- Data Link Layer Switching
+
+Unit 6: Network Layer
+- Network Layer Design Issues
+- Routing Algorithms
+- Congestion Control Algorithms
+- Quality of Service
+- Internetworking
+- Network Layer in the Internet
+
+Unit 7: IP Protocol Suite
+- IP Protocol (IPv4 and IPv6)
+- IP Addresses and Subnetting
+- CIDR and VLSM
+- Internet Control Protocols (ICMP, ARP, RARP)
+- DHCP and NAT
+- Mobile IP
+
+Unit 8: Routing Protocols
+- Distance Vector Routing (RIP)
+- Link State Routing (OSPF)
+- Path Vector Routing (BGP)
+- Multicast Routing
+- Routing in Mobile Ad Hoc Networks
+- Software Defined Networking (SDN)
+
+Unit 9: Transport Layer
+- Transport Service
+- Elements of Transport Protocols
+- Connection Management
+- TCP Protocol
+- UDP Protocol
+- Performance Issues
+
+Unit 10: Congestion Control
+- Congestion Control in TCP
+- Wireless TCP and UDP
+- Transactional TCP
+- Performance Enhancement
+- Quality of Service
+- Integrated Services and Differentiated Services
+
+Unit 11: Application Layer
+- DNS (Domain Name System)
+- Electronic Mail (SMTP, POP3, IMAP)
+- World Wide Web (HTTP, HTTPS)
+- File Transfer Protocol (FTP)
+- Network Management (SNMP)
+- Multimedia Applications
+
+Unit 12: Network Security
+- Cryptography Fundamentals
+- Symmetric and Asymmetric Key Cryptography
+- Digital Signatures and Certificates
+- Network Security Protocols (SSL/TLS, IPSec)
+- Firewalls and Intrusion Detection
+- Wireless Security (WEP, WPA, WPA2)
+
+Unit 13: Wireless and Mobile Networks
+- Wireless Communication Principles
+- Cellular Networks (2G, 3G, 4G, 5G)
+- Wireless LANs and PANs
+- Mobile IP and Mobile TCP
+- Ad Hoc and Sensor Networks
+- Internet of Things (IoT)
+
+Unit 14: Network Performance and Management
+- Network Performance Metrics
+- Traffic Engineering
+- Network Monitoring and Analysis
+- Fault Management
+- Configuration Management
+- Security Management

@@ -1,0 +1,1649 @@
+// CramMaster AgentX - Multi-Step Agentic AI Workflow
+// TiDB AgentX Hackathon Implementation
+
+class CramMasterAgentXUI {
+    constructor() {
+        this.apiBaseUrl = 'http://localhost:3001/api';
+        this.workflowState = {
+            currentStep: 0,
+            totalSteps: 6,
+            stepNames: [
+                'Ingest & Index Data',
+                'Chain LLM Calls', 
+                'Vector + Full-Text Search',
+                'External API Integration',
+                'Demo Features Generation',
+                'Complete Workflow'
+            ]
+        };
+        this.currentPlan = null;
+        this.timer = null;
+        this.timerInterval = null;
+        this.timerDuration = 25 * 60; // 25 minutes in seconds
+        this.timerRemaining = this.timerDuration;
+        this.isTimerRunning = false;
+        this.timerMinutes = 25;
+        this.timerSeconds = 0;
+        this.currentQuiz = null;
+        this.quizHistory = [];
+        this.timerHistory = [];
+        this.studyStreak = { current: 0, best: 0, lastStudyDate: null };
+        this.workflowLogs = [];
+        // Initialize UI components
+        this.initializeEventListeners();
+        this.initializeTimer();
+        this.loadWorkflowLogs();
+        this.initializeTabs();
+        this.initializeCharts();
+        this.loadStoredData();
+    }
+
+    initializeStepVisualizer() {
+        // Create step visualizer HTML if it doesn't exist
+        const existingVisualizer = document.getElementById('stepVisualizer');
+        if (!existingVisualizer) {
+            const visualizerHTML = `
+                <div id="stepVisualizer" class="step-visualizer hidden">
+                    <h3>🚀 AgentX Workflow Progress</h3>
+                    <div class="steps-container">
+                        ${this.workflowState.stepNames.map((name, index) => `
+                            <div class="step-item" data-step="${index + 1}">
+                                <div class="step-number">${index + 1}</div>
+                                <div class="step-name">${name}</div>
+                                <div class="step-status">⏳</div>
+                            </div>
+                        `).join('')}
+                    </div>
+                    <div class="workflow-logs">
+                        <h4>📋 Workflow Logs</h4>
+                        <div id="logContainer" class="log-container"></div>
+                    </div>
+                </div>
+            `;
+            
+            // Insert after the loading section
+            const loadingSection = document.getElementById('loadingSection');
+            if (loadingSection) {
+                loadingSection.insertAdjacentHTML('afterend', visualizerHTML);
+            }
+        }
+    }
+
+    initializeEventListeners() {
+        console.log('Initializing event listeners...'); // Debug log
+        
+        // File upload
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        
+        if (uploadArea && fileInput) {
+            uploadArea.addEventListener('click', () => fileInput.click());
+            uploadArea.addEventListener('dragover', this.handleDragOver.bind(this));
+            uploadArea.addEventListener('drop', this.handleFileDrop.bind(this));
+            fileInput.addEventListener('change', this.handleFileSelect.bind(this));
+        }
+
+        // Generate Study Plan button
+        const generateBtn = document.getElementById('generatePlan');
+        if (generateBtn) {
+            generateBtn.addEventListener('click', this.generateStudyPlan.bind(this));
+        }
+
+        // Run Full Demo button
+        const runDemoBtn = document.getElementById('runFullDemo');
+        if (runDemoBtn) {
+            runDemoBtn.addEventListener('click', this.runFullDemo.bind(this));
+        }
+
+        // Timer controls
+        const startTimer = document.getElementById('startTimer');
+        const pauseTimer = document.getElementById('pauseTimer');
+        const resetTimer = document.getElementById('resetTimer');
+        
+        if (startTimer) startTimer.addEventListener('click', this.startTimer.bind(this));
+        if (pauseTimer) pauseTimer.addEventListener('click', this.pauseTimer.bind(this));
+        if (resetTimer) resetTimer.addEventListener('click', this.resetTimer.bind(this));
+
+        // Action buttons
+        const startStudyingBtn = document.getElementById('startStudyingBtn');
+        if (startStudyingBtn) {
+            startStudyingBtn.addEventListener('click', this.startStudying.bind(this));
+        }
+
+        const exportPdfBtn = document.getElementById('exportPdfBtn');
+        if (exportPdfBtn) {
+            exportPdfBtn.addEventListener('click', this.downloadPlan.bind(this));
+        }
+
+        const sharePlanBtn = document.getElementById('sharePlanBtn');
+        if (sharePlanBtn) {
+            sharePlanBtn.addEventListener('click', this.sharePlan.bind(this));
+        }
+
+        const downloadJsonBtn = document.getElementById('downloadJsonBtn');
+        if (downloadJsonBtn) {
+            downloadJsonBtn.addEventListener('click', this.downloadJSON.bind(this));
+        }
+    }
+
+    handleDragOver(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        e.dataTransfer.dropEffect = 'copy';
+    }
+
+    handleFileDrop(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+            this.processFile(files[0]);
+        }
+    }
+
+    handleFileSelect(e) {
+        const file = e.target.files[0];
+        if (file) {
+            this.processFile(file);
+        }
+    }
+
+    async processFile(file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const content = e.target.result;
+            const syllabusText = document.getElementById('syllabusText');
+            if (syllabusText) {
+                syllabusText.value = content;
+            }
+            this.showNotification('File uploaded successfully! 📁', 'success');
+        };
+        reader.readAsText(file);
+    }
+
+    async generateStudyPlan() {
+        console.log('Generate Study Plan clicked!'); // Debug log
+        
+        const syllabusText = document.getElementById('syllabusText');
+        const studyTime = document.getElementById('studyTime');
+        const focusTopics = document.getElementById('focusTopics');
+
+        console.log('Elements found:', { syllabusText, studyTime, focusTopics }); // Debug log
+
+        if (!syllabusText || !syllabusText.value.trim()) {
+            this.showNotification('Please provide syllabus content or upload a file! 📝', 'error');
+            return;
+        }
+
+        const studyHours = parseInt(studyTime?.value || '0');
+        if (!studyHours || studyHours < 1) {
+            this.showNotification('Please specify valid study time! ⏰', 'error');
+            return;
+        }
+
+        // Enhanced workflow execution with logging
+        this.showStepVisualizer();
+        this.showLoading();
+        this.addLogEntry('Starting CramMaster AgentX workflow...', 'info');
+        
+        try {
+            const response = await fetch('http://localhost:3001/api/workflow/execute', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    syllabusContent: syllabusText.value.trim(),
+                    studyHours: studyHours,
+                    focusTopics: focusTopics?.value.trim() || '',
+                    userPreferences: this.getUserPreferences(),
+                    userId: this.getUserId()
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+
+            const contentType = response.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+                const text = await response.text();
+                throw new Error(`Expected JSON response, got: ${text.substring(0, 100)}`);
+            }
+
+            const result = await response.json();
+            
+            this.currentPlan = result.data;
+            this.displayAgentXResults(result.data);
+            
+            this.addLogEntry('Workflow completed successfully!', 'success');
+            this.showNotification('🎉 Multi-Step AgentX Workflow Complete!', 'success');
+            
+        } catch (error) {
+            console.error('Workflow error:', error);
+            this.addLogEntry(`Workflow failed: ${error.message}`, 'error');
+            this.showNotification('❌ Workflow failed: ' + error.message, 'error');
+            this.showLoading();
+            this.hideStepVisualizer();
+        }
+    }
+
+    showStepVisualizer() {
+        const visualizer = document.getElementById('stepVisualizer');
+        if (visualizer) {
+            visualizer.classList.remove('hidden');
+        }
+    }
+
+    showWorkflowSteps() {
+        const steps = [
+            { id: 1, title: "📄 Processing Syllabus", description: "Analyzing uploaded content" },
+            { id: 2, title: "🧠 AI Planning", description: "Generating personalized study roadmap" },
+            { id: 3, title: "📝 Creating Quizzes", description: "Building interactive questions" },
+            { id: 4, title: "⏰ Setting Timelines", description: "Optimizing study schedule" },
+            { id: 5, title: "🎯 Finalizing Plan", description: "Preparing complete study experience" }
+        ];
+
+        let stepsContainer = document.getElementById('workflowSteps');
+        if (!stepsContainer) {
+            stepsContainer = document.createElement('div');
+            stepsContainer.id = 'workflowSteps';
+            stepsContainer.className = 'workflow-steps';
+            
+            const loadingSection = document.getElementById('loadingSection');
+            if (loadingSection) {
+                loadingSection.appendChild(stepsContainer);
+            }
+        }
+
+        stepsContainer.innerHTML = `
+            <div class="steps-header">
+                <h3>🚀 AI Workflow Progress</h3>
+                <p>Multi-step agentic AI creating your perfect study plan</p>
+            </div>
+            <div class="steps-list">
+                ${steps.map(step => `
+                    <div class="workflow-step" data-step="${step.id}">
+                        <div class="step-indicator">
+                            <div class="step-number">${step.id}</div>
+                            <div class="step-status">
+                                <i class="fas fa-clock pending-icon"></i>
+                                <i class="fas fa-spinner fa-spin processing-icon"></i>
+                                <i class="fas fa-check-circle completed-icon"></i>
+                            </div>
+                        </div>
+                        <div class="step-content">
+                            <h4 class="step-title">${step.title}</h4>
+                            <p class="step-description">${step.description}</p>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+
+        this.animateWorkflowSteps(steps);
+    }
+
+    async animateWorkflowSteps(steps) {
+        for (let i = 0; i < steps.length; i++) {
+            const step = steps[i];
+            const stepElement = document.querySelector(`[data-step="${step.id}"]`);
+            
+            if (stepElement) {
+                stepElement.classList.add('processing');
+                
+                const duration = 1000 + Math.random() * 1500;
+                await new Promise(resolve => setTimeout(resolve, duration));
+                
+                stepElement.classList.remove('processing');
+                stepElement.classList.add('completed');
+            }
+        }
+        
+        setTimeout(() => {
+            const stepsContainer = document.getElementById('workflowSteps');
+            if (stepsContainer) {
+                stepsContainer.classList.add('all-completed');
+            }
+        }, 500);
+    }
+
+    hideStepVisualizer() {
+        const visualizer = document.getElementById('stepVisualizer');
+        if (visualizer) {
+            visualizer.classList.add('hidden');
+        }
+    }
+
+    updateStepStatus(stepNumber, status, message = '') {
+        const stepItem = document.querySelector(`[data-step="${stepNumber}"]`);
+        if (stepItem) {
+            const statusElement = stepItem.querySelector('.step-status');
+            const stepElement = stepItem.querySelector('.step-number');
+            
+            switch (status) {
+                case 'active':
+                    statusElement.textContent = '🔄';
+                    stepElement.classList.add('active');
+                    break;
+                case 'completed':
+                    statusElement.textContent = '✅';
+                    stepElement.classList.remove('active');
+                    stepElement.classList.add('completed');
+                    break;
+                case 'error':
+                    statusElement.textContent = '❌';
+                    stepElement.classList.remove('active');
+                    stepElement.classList.add('error');
+                    break;
+                default:
+                    statusElement.textContent = '⏳';
+            }
+        }
+
+        if (message) {
+            this.addWorkflowLog(stepNumber, message);
+        }
+    }
+
+    addWorkflowLog(step, message) {
+        const logContainer = document.getElementById('logContainer');
+        if (logContainer) {
+            const logEntry = document.createElement('div');
+            logEntry.className = 'log-entry';
+            logEntry.innerHTML = `
+                <span class="log-timestamp">${new Date().toLocaleTimeString()}</span>
+                <span class="log-step">Step ${step}:</span>
+                <span class="log-message">${message}</span>
+            `;
+            logContainer.appendChild(logEntry);
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+    }
+
+    async executeAgentXWorkflow(params) {
+        try {
+            // Step 1: Start workflow
+            this.updateStepStatus(1, 'active', 'Starting data ingestion and indexing...');
+            
+            const response = await fetch(`${this.apiBaseUrl}/workflow/execute`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    ...params,
+                    userId: this.getUserId()
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const result = await response.json();
+            
+            // Simulate step progression for demo
+            await this.simulateWorkflowSteps(result);
+            
+            return result;
+        } catch (error) {
+            console.error('Workflow execution failed:', error);
+            throw error;
+        }
+    }
+
+    async simulateWorkflowSteps(result) {
+        const steps = [
+            { step: 1, message: 'Indexed topics with vector embeddings', delay: 1000 },
+            { step: 2, message: 'Generated study plan with LLM chains', delay: 1500 },
+            { step: 3, message: 'Performed vector similarity search', delay: 1000 },
+            { step: 4, message: 'Integrated external APIs', delay: 800 },
+            { step: 5, message: 'Created demo features', delay: 1000 },
+            { step: 6, message: 'Workflow completed successfully', delay: 500 }
+        ];
+
+        for (const { step, message, delay } of steps) {
+            await new Promise(resolve => setTimeout(resolve, delay));
+            this.updateStepStatus(step, 'active', message);
+            await new Promise(resolve => setTimeout(resolve, 500));
+            this.updateStepStatus(step, 'completed');
+        }
+    }
+
+    getUserPreferences() {
+        return {
+            notifications: false,
+            slack: false,
+            discord: false,
+            theme: 'dark',
+            gamification: true
+        };
+    }
+
+    getUserId() {
+        return 'demo-user-' + Date.now();
+    }
+
+    displayAgentXResults(data) {
+        const resultsContainer = document.getElementById('studyTimeline');
+        if (!resultsContainer || !data) return;
+
+        const studyPlan = data.studyPlan || data;
+        const topics = studyPlan.topics || [];
+
+        resultsContainer.innerHTML = `
+            <div class="agentx-results">
+                <div class="workflow-summary">
+                    <h3>🎯 AgentX Workflow Results</h3>
+                    <div class="summary-stats">
+                        <div class="stat-item">
+                            <span class="stat-label">Topics Indexed:</span>
+                            <span class="stat-value">${topics.length}</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Total Study Time:</span>
+                            <span class="stat-value">${studyPlan.total_time || 0} hours</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Quiz Questions:</span>
+                            <span class="stat-value">${topics.reduce((sum, t) => sum + (t.quiz_questions?.length || 0), 0)}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="topics-grid">
+                    ${topics.map((topic, index) => `
+                        <div class="topic-card enhanced" data-topic-id="${index}">
+                            <div class="topic-header">
+                                <h4>${topic.topic_name || topic.topic || `Topic ${index + 1}`}</h4>
+                                <span class="difficulty-badge ${(topic.difficulty || 'Medium').toLowerCase()}">${topic.difficulty || 'Medium'}</span>
+                            </div>
+                            <div class="topic-content">
+                                <p>${topic.content || 'Study this topic thoroughly'}</p>
+                                <div class="topic-meta">
+                                    <span class="estimated-time">⏱️ ${topic.estimated_time || 30} min</span>
+                                    <span class="quiz-count">❓ ${topic.quiz_questions?.length || 0} questions</span>
+                                </div>
+                            </div>
+                            <div class="topic-actions">
+                                <button class="btn-quiz" onclick="ui.startQuiz(${index})">Start Quiz</button>
+                                <button class="btn-hints" onclick="ui.showHints(${index})">Study Hints</button>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+
+                <div class="demo-features">
+                    <h4>🎮 Demo Features</h4>
+                    <div class="feature-buttons">
+                        <button class="btn-feature" onclick="ui.exportPlan('json')">📄 Export JSON</button>
+                        <button class="btn-feature" onclick="ui.exportPlan('pdf')">📋 Export PDF</button>
+                        <button class="btn-feature" onclick="ui.shareProgress()">🔗 Share Progress</button>
+                        <button class="btn-feature" onclick="ui.startPomodoro()">🍅 Pomodoro Timer</button>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    startQuiz(topicIndex) {
+        if (!this.currentPlan?.studyPlan?.topics?.[topicIndex]) return;
+        
+        const topic = this.currentPlan.studyPlan.topics[topicIndex];
+        const questions = topic.quiz_questions || [];
+        
+        if (questions.length === 0) {
+            this.showNotification('No quiz questions available for this topic', 'warning');
+            return;
+        }
+
+        const quiz = {
+            topicIndex,
+            topic,
+            questions,
+            currentQuestion: 0,
+            answers: [],
+            startTime: Date.now()
+        };
+
+        this.currentQuiz = quiz;
+        this.currentQuestionIndex = 0;
+        this.quizScore = 0;
+        this.quizStartTime = Date.now();
+        this.showQuizModal(quiz);
+    }
+
+    showQuizModal(quiz) {
+        // Remove existing modal if present
+        const existingModal = document.getElementById('quizModal');
+        if (existingModal) {
+            existingModal.remove();
+        }
+        
+        this.createQuizModal();
+        this.showQuestion(0);
+        
+        // Show modal
+        const modal = document.getElementById('quizModal');
+        if (modal) {
+            modal.style.display = 'flex';
+        }
+    }
+
+    closeQuizModal() {
+        const modal = document.getElementById('quizModal');
+        if (modal) {
+            modal.style.display = 'none';
+            modal.remove();
+        }
+    }
+
+    // Enhanced Quiz Methods
+    showQuizReview(quiz, userAnswers) {
+        const modal = document.getElementById('quizModal');
+        const modalContent = modal.querySelector('.modal-content');
+        
+        modalContent.innerHTML = `
+            <div class="modal-header">
+                <h3><i class="fas fa-clipboard-check"></i> Quiz Review: ${quiz.topic}</h3>
+                <button class="close-btn" onclick="ui.closeQuizModal()">&times;</button>
+            </div>
+            <div class="quiz-review-content">
+                <div class="review-header">
+                    <div class="review-score">
+                        <span class="score-number">${this.quizScore}</span>
+                        <span class="score-total">/${quiz.questions.length}</span>
+                        <div class="score-percentage">${Math.round((this.quizScore / quiz.questions.length) * 100)}%</div>
+                    </div>
+                </div>
+                <div class="review-questions">
+                    ${quiz.questions.map((q, index) => {
+                        const userAnswer = userAnswers[index];
+                        const isCorrect = userAnswer === q.correct;
+                        return `
+                            <div class="review-question ${isCorrect ? 'correct' : 'incorrect'}">
+                                <div class="question-header">
+                                    <span class="question-number">Q${index + 1}</span>
+                                    <span class="question-status">
+                                        ${isCorrect ? '<i class="fas fa-check-circle"></i>' : '<i class="fas fa-times-circle"></i>'}
+                                    </span>
+                                </div>
+                                <div class="question-text">${q.question}</div>
+                                <div class="answer-options">
+                                    ${q.options.map((option, optIndex) => {
+                                        let className = 'review-option';
+                                        if (optIndex === q.correct) className += ' correct-answer';
+                                        if (optIndex === userAnswer && !isCorrect) className += ' user-wrong';
+                                        return `<div class="${className}">${option}</div>`;
+                                    }).join('')}
+                                </div>
+                                ${q.explanation ? `<div class="explanation"><strong>Explanation:</strong> ${q.explanation}</div>` : ''}
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+                <div class="review-actions">
+                    <button class="action-btn primary" onclick="ui.closeQuizModal()">
+                        <i class="fas fa-check"></i> Got it!
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        modal.style.display = 'flex';
+    }
+
+    // Confetti Animation
+    triggerConfetti() {
+        if (typeof confetti !== 'undefined') {
+            confetti({
+                particleCount: 100,
+                spread: 70,
+                origin: { y: 0.6 }
+            });
+            
+            setTimeout(() => {
+                confetti({
+                    particleCount: 50,
+                    angle: 60,
+                    spread: 55,
+                    origin: { x: 0 }
+                });
+            }, 250);
+            
+            setTimeout(() => {
+                confetti({
+                    particleCount: 50,
+                    angle: 120,
+                    spread: 55,
+                    origin: { x: 1 }
+                });
+            }, 400);
+        }
+    }
+
+    // Full Demo Function
+    async runFullDemo() {
+        this.showNotification('🎯 Starting Full Demo Experience!', 'info');
+        
+        // Step 1: Generate Study Plan
+        await this.generateStudyPlan();
+        
+        // Wait for plan to load
+        setTimeout(async () => {
+            // Step 2: Start Timer
+            this.showNotification('⏰ Starting Pomodoro Timer...', 'info');
+            await this.startTimer();
+            
+            // Step 3: Trigger Quiz after 5 seconds (demo speed)
+            setTimeout(() => {
+                this.showNotification('📝 Launching Quiz...', 'info');
+                const demoQuiz = this.generateDemoQuiz();
+                this.startQuiz(demoQuiz);
+            }, 5000);
+            
+            // Step 4: Show Dashboard after 10 seconds
+            setTimeout(() => {
+                this.showNotification('📊 Opening Dashboard...', 'info');
+                const dashboardTab = document.querySelector('[data-tab="dashboard"]');
+                if (dashboardTab) {
+                    dashboardTab.click();
+                }
+            }, 10000);
+            
+        }, 3000);
+    }
+
+    generateDemoQuiz() {
+        return {
+            topic: "Demo Quiz - Database Systems",
+            questions: [
+                {
+                    question: "What does ACID stand for in database transactions?",
+                    options: [
+                        "Atomicity, Consistency, Isolation, Durability",
+                        "Accuracy, Completeness, Integrity, Dependability", 
+                        "Authentication, Compression, Indexing, Distribution",
+                        "Analysis, Calculation, Integration, Display"
+                    ],
+                    correct: 0,
+                    explanation: "ACID properties ensure reliable database transactions: Atomicity (all-or-nothing), Consistency (valid state), Isolation (concurrent safety), Durability (permanent storage)."
+                },
+                {
+                    question: "Which SQL command is used to retrieve data?",
+                    options: ["INSERT", "SELECT", "UPDATE", "DELETE"],
+                    correct: 1,
+                    explanation: "SELECT is the SQL command used to query and retrieve data from database tables."
+                }
+            ]
+        };
+    }
+
+    // Dashboard Updates
+    updateDashboard() {
+        // Update progress chart
+        if (this.progressChart && this.currentPlan) {
+            const totalTopics = this.currentPlan.topics ? this.currentPlan.topics.length : 0;
+            const completedTopics = Math.floor(totalTopics * 0.3); // Demo: 30% completed
+            const percentage = totalTopics > 0 ? (completedTopics / totalTopics) * 100 : 0;
+            
+            this.progressChart.data.datasets[0].data = [percentage, 100 - percentage];
+            this.progressChart.update();
+        }
+        
+        // Update quiz chart
+        if (this.quizChart && this.quizHistory.length > 0) {
+            const recentQuizzes = this.quizHistory.slice(0, 10).reverse();
+            const labels = recentQuizzes.map((_, index) => `Quiz ${index + 1}`);
+            const scores = recentQuizzes.map(quiz => (quiz.correctAnswers / quiz.totalQuestions) * 100);
+            
+            this.quizChart.data.labels = labels;
+            this.quizChart.data.datasets[0].data = scores;
+            this.quizChart.update();
+        }
+        
+        // Update streak
+        const streakNumber = document.getElementById('streakNumber');
+        const streakFill = document.getElementById('streakFill');
+        if (streakNumber && streakFill) {
+            streakNumber.textContent = this.studyStreak.count;
+            const fillPercentage = Math.min((this.studyStreak.count / 7) * 100, 100); // 7-day goal
+            streakFill.style.width = fillPercentage + '%';
+        }
+        
+        // Update today's sessions
+        const today = new Date().toLocaleDateString();
+        const todayPomodoros = this.timerHistory.filter(session => 
+            session.date === today && session.completed
+        ).length;
+        const todayQuizzes = this.quizHistory.filter(quiz => 
+            quiz.date === today
+        ).length;
+        
+        const pomodoroCount = document.getElementById('todayPomodoros');
+        const quizCount = document.getElementById('todayQuizzes');
+        if (pomodoroCount) pomodoroCount.textContent = todayPomodoros;
+        if (quizCount) quizCount.textContent = todayQuizzes;
+    }
+
+    // History Updates
+    updateHistory() {
+        // Update quiz history
+        const quizHistoryEl = document.getElementById('quizHistory');
+        if (quizHistoryEl) {
+            if (this.quizHistory.length === 0) {
+                quizHistoryEl.innerHTML = '<div class="no-history">No quiz history yet. Take a quiz to get started!</div>';
+            } else {
+                quizHistoryEl.innerHTML = this.quizHistory.slice(0, 20).map(quiz => `
+                    <div class="history-item">
+                        <div class="history-item-header">
+                            <span class="history-item-title">${quiz.topic}</span>
+                            <span class="history-item-score">${quiz.correctAnswers}/${quiz.totalQuestions}</span>
+                        </div>
+                        <div class="history-item-time">${new Date(quiz.timestamp).toLocaleString()}</div>
+                    </div>
+                `).join('');
+            }
+        }
+        
+        // Update timer history
+        const timerHistoryEl = document.getElementById('timerHistory');
+        if (timerHistoryEl) {
+            if (this.timerHistory.length === 0) {
+                timerHistoryEl.innerHTML = '<div class="no-history">No timer sessions yet. Start a Pomodoro to begin!</div>';
+            } else {
+                timerHistoryEl.innerHTML = this.timerHistory.slice(0, 20).map(session => `
+                    <div class="history-item">
+                        <div class="history-item-header">
+                            <span class="history-item-title">
+                                ${session.completed ? '✅ Completed Session' : '⏸️ Incomplete Session'}
+                            </span>
+                            <span class="history-item-score">${Math.floor(session.duration / 60)}m</span>
+                        </div>
+                        <div class="history-item-time">${new Date(session.timestamp).toLocaleString()}</div>
+                    </div>
+                `).join('');
+            }
+        }
+    }
+
+    createQuizModal() {
+        const quizModal = document.createElement('div');
+        quizModal.className = 'quiz-modal';
+        quizModal.id = 'quizModal';
+        quizModal.innerHTML = `
+            <div class="quiz-content">
+                <div class="quiz-header">
+                    <h3>📝 Quiz: ${this.currentQuiz.topic.topic_name || this.currentQuiz.topic.topic}</h3>
+                    <button class="close-quiz" onclick="ui.closeQuizModal()">✕</button>
+                </div>
+                <div class="quiz-progress">
+                    <div class="quiz-progress-text">Question <span id="currentQ">1</span> of <span id="totalQ">${this.currentQuiz.questions.length}</span></div>
+                    <div class="quiz-progress-bar">
+                        <div class="quiz-progress-fill" id="quizProgressFill" style="width: ${(1/this.currentQuiz.questions.length)*100}%"></div>
+                    </div>
+                </div>
+                <div id="questionContainer"></div>
+                <div class="quiz-navigation">
+                    <button class="btn-secondary" id="prevBtn" onclick="ui.previousQuestion()" style="display: none;">← Previous</button>
+                    <button class="btn-primary" id="nextBtn" onclick="ui.nextQuestion()">Next →</button>
+                    <button class="btn-submit-quiz" id="submitBtn" onclick="ui.submitQuiz()" style="display: none;">Submit Quiz</button>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(quizModal);
+    }
+
+    showQuestion(questionIndex) {
+        const question = this.currentQuiz.questions[questionIndex];
+        const container = document.getElementById('questionContainer');
+        
+        // Fade out current question
+        if (container.firstChild) {
+            container.firstChild.classList.add('fade-out');
+            setTimeout(() => {
+                this.renderQuestion(questionIndex);
+            }, 300);
+        } else {
+            this.renderQuestion(questionIndex);
+        }
+        
+        // Update progress
+        document.getElementById('currentQ').textContent = questionIndex + 1;
+        const progressFill = document.getElementById('quizProgressFill');
+        progressFill.style.width = `${((questionIndex + 1) / this.currentQuiz.questions.length) * 100}%`;
+        
+        // Update navigation buttons
+        const prevBtn = document.getElementById('prevBtn');
+        const nextBtn = document.getElementById('nextBtn');
+        const submitBtn = document.getElementById('submitBtn');
+        
+        prevBtn.style.display = questionIndex > 0 ? 'block' : 'none';
+        
+        if (questionIndex === this.currentQuiz.questions.length - 1) {
+            nextBtn.style.display = 'none';
+            submitBtn.style.display = 'block';
+        } else {
+            nextBtn.style.display = 'block';
+            submitBtn.style.display = 'none';
+        }
+    }
+
+    renderQuestion(questionIndex) {
+        const question = this.currentQuiz.questions[questionIndex];
+        const container = document.getElementById('questionContainer');
+        
+        if (!question) return;
+        
+        container.innerHTML = `
+            <div class="question-card">
+                <div class="question-text">
+                    <strong>Q${questionIndex + 1}:</strong> ${question.question}
+                </div>
+                <div class="question-options">
+                    ${question.options?.map((opt, j) => `
+                        <button class="option-button" data-option="${j}" onclick="ui.selectOption(${j})">
+                            ${opt}
+                        </button>
+                    `).join('') || ''}
+                </div>
+            </div>
+        `;
+        
+        // Restore previous answer if exists
+        if (this.currentQuiz.answers[questionIndex] !== undefined) {
+            const selectedOption = container.querySelector(`[data-option="${this.currentQuiz.answers[questionIndex]}"]`);
+            if (selectedOption) {
+                selectedOption.classList.add('selected');
+            }
+        }
+    }
+
+    selectOption(optionIndex) {
+        // Remove previous selection
+        document.querySelectorAll('.option-button').forEach(btn => btn.classList.remove('selected'));
+        
+        // Add selection to clicked option
+        event.target.classList.add('selected');
+        
+        // Store answer
+        this.currentQuiz.answers[this.currentQuiz.currentQuestion] = optionIndex;
+    }
+
+    nextQuestion() {
+        if (this.currentQuiz.currentQuestion < this.currentQuiz.questions.length - 1) {
+            this.currentQuiz.currentQuestion++;
+            this.showQuestion(this.currentQuiz.currentQuestion);
+        }
+    }
+
+    previousQuestion() {
+        if (this.currentQuiz.currentQuestion > 0) {
+            this.currentQuiz.currentQuestion--;
+            this.showQuestion(this.currentQuiz.currentQuestion);
+        }
+    }
+
+    submitQuiz() {
+        // Calculate score
+        let score = 0;
+        this.currentQuiz.questions.forEach((question, index) => {
+            if (this.currentQuiz.answers[index] === question.correct) {
+                score++;
+            }
+        });
+        
+        this.quizScore = score;
+        
+        // Save quiz result
+        this.saveQuizResult(
+            this.currentQuiz.topic.topic_name || this.currentQuiz.topic.topic || 'Quiz',
+            score,
+            this.currentQuiz.questions.length,
+            score
+        );
+        
+        // Show results
+        this.showQuizResults();
+        
+        // Trigger confetti for good performance
+        if (score >= this.currentQuiz.questions.length * 0.7) {
+            this.triggerConfetti();
+        }
+    }
+
+    showQuizResults() {
+        const modal = document.getElementById('quizModal');
+        const quizContent = modal.querySelector('.quiz-content');
+        
+        const percentage = Math.round((this.quizScore / this.currentQuiz.questions.length) * 100);
+        
+        quizContent.innerHTML = `
+            <div class="quiz-results">
+                <div class="results-header">
+                    <h2>🎉 Quiz Complete!</h2>
+                    <div class="score-display">
+                        <div class="score-number">${this.quizScore}</div>
+                        <div class="score-total">/${this.currentQuiz.questions.length}</div>
+                        <div class="score-percentage">${percentage}%</div>
+                    </div>
+                </div>
+                <div class="results-message">
+                    ${percentage >= 80 ? '🌟 Excellent work!' : 
+                      percentage >= 60 ? '👍 Good job!' : 
+                      '📚 Keep studying!'}
+                </div>
+                <div class="results-actions">
+                    <button class="action-btn primary" onclick="ui.closeQuizModal()">
+                        <i class="fas fa-check"></i> Continue
+                    </button>
+                </div>
+            </div>
+        `;
+    }
+
+    closeQuiz() {
+        const modal = document.getElementById('quizModal');
+        if (modal) {
+            modal.remove();
+        }
+        this.currentQuiz = null;
+    }
+
+    showHints(topicIndex) {
+        if (!this.currentPlan?.studyPlan?.topics?.[topicIndex]) return;
+        
+        const topic = this.currentPlan.studyPlan.topics[topicIndex];
+        const hints = topic.study_hints || [];
+        
+        const hintsModal = document.createElement('div');
+        hintsModal.className = 'hints-modal';
+        hintsModal.innerHTML = `
+            <div class="hints-content">
+                <div class="hints-header">
+                    <h3>💡 Study Hints: ${topic.topic_name || topic.topic}</h3>
+                    <button class="close-hints" onclick="this.parentElement.parentElement.parentElement.remove()">✕</button>
+                </div>
+                <div class="hints-list">
+                    ${hints.map(hint => `
+                        <div class="hint-item">
+                            <span class="hint-icon">💡</span>
+                            <p>${hint}</p>
+                        </div>
+                    `).join('') || '<p>No study hints available for this topic.</p>'}
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(hintsModal);
+    }
+
+    exportPlan(format) {
+        if (!this.currentPlan) {
+            this.showNotification('No study plan to export', 'warning');
+            return;
+        }
+
+        const filename = `crammaster-study-plan-${Date.now()}.${format}`;
+        
+        if (format === 'json') {
+            const dataStr = JSON.stringify(this.currentPlan, null, 2);
+            this.downloadFile(dataStr, filename, 'application/json');
+        } else if (format === 'pdf') {
+            this.showNotification('PDF export feature coming soon!', 'info');
+        }
+    }
+
+    downloadFile(content, filename, contentType) {
+        const blob = new Blob([content], { type: contentType });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+    }
+
+    async runFullDemo() {
+        // Preload demo data
+        const demoSyllabus = `Database Management Systems (DBMS) Course Syllabus:
+
+1. Introduction to Database Systems
+   - Database concepts and architecture
+   - Data models and database languages
+   - Database system environment
+
+2. Relational Model
+   - Structure of relational databases
+   - Database schema and instances
+   - Keys and relational algebra
+
+3. SQL Fundamentals
+   - Basic SQL queries (SELECT, INSERT, UPDATE, DELETE)
+   - Joins and subqueries
+   - Aggregate functions and grouping
+
+4. Database Design
+   - Entity-Relationship (ER) modeling
+   - ER diagrams and design process
+   - Normalization (1NF, 2NF, 3NF, BCNF)
+
+5. Advanced SQL
+   - Views and stored procedures
+   - Triggers and functions
+   - Indexing and query optimization
+
+6. Transaction Management
+   - ACID properties
+   - Concurrency control
+   - Recovery and backup strategies
+
+7. NoSQL Databases
+   - Document stores (MongoDB)
+   - Key-value stores (Redis)
+   - Graph databases (Neo4j)`;
+
+        // Set demo values
+        document.getElementById('syllabusText').value = demoSyllabus;
+        document.getElementById('studyTime').value = '4';
+        document.getElementById('focusTopics').value = 'SQL, Database Design, Normalization';
+
+        // Show results section and hide loading
+        document.getElementById('resultsSection').style.display = 'block';
+        document.getElementById('tabNavigation').style.display = 'flex';
+        document.getElementById('loadingSection').style.display = 'none';
+
+        // Show demo notification
+        this.showNotification('🎬 Running full demo with sample DBMS syllabus!', 'info');
+        
+        // Wait a moment then trigger generation
+        setTimeout(() => {
+            this.generateStudyPlan();
+        }, 1000);
+    }
+
+    async exportToPdf() {
+        if (!this.currentPlan) {
+            this.showNotification('No study plan to export', 'warning');
+            return;
+        }
+
+        try {
+            // Create a simple HTML content for PDF
+            const htmlContent = this.generatePdfContent();
+            
+            // For now, show the HTML content in a new window for printing
+            const printWindow = window.open('', '_blank');
+            printWindow.document.write(htmlContent);
+            printWindow.document.close();
+            printWindow.print();
+            
+            this.showNotification('📄 PDF export opened in new window. Use Ctrl+P to save as PDF.', 'success');
+        } catch (error) {
+            this.showNotification('PDF export failed: ' + error.message, 'error');
+        }
+    }
+
+    generatePdfContent() {
+        const studyPlan = this.currentPlan?.studyPlan || this.currentPlan;
+        const topics = studyPlan?.topics || [];
+        
+        return `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>CramMaster AgentX Study Plan</title>
+            <style>
+                body { font-family: Arial, sans-serif; margin: 20px; }
+                .header { text-align: center; margin-bottom: 30px; }
+                .topic { margin-bottom: 20px; padding: 15px; border: 1px solid #ddd; border-radius: 8px; }
+                .topic-header { font-weight: bold; font-size: 1.2em; margin-bottom: 10px; }
+                .difficulty { display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 0.8em; }
+                .high { background-color: #ffebee; color: #c62828; }
+                .medium { background-color: #fff3e0; color: #ef6c00; }
+                .low { background-color: #e8f5e8; color: #2e7d32; }
+                .quiz-questions { margin-top: 10px; }
+                .question { margin: 8px 0; padding-left: 20px; }
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <h1>🚀 CramMaster AgentX Study Plan</h1>
+                <p>Generated on ${new Date().toLocaleDateString()}</p>
+                <p>Total Topics: ${topics.length} | Study Time: ${studyPlan?.total_time || 0} hours</p>
+            </div>
+            ${topics.map((topic, index) => `
+                <div class="topic">
+                    <div class="topic-header">
+                        ${index + 1}. ${topic.topic_name || topic.topic || `Topic ${index + 1}`}
+                        <span class="difficulty ${(topic.difficulty || 'medium').toLowerCase()}">${topic.difficulty || 'Medium'}</span>
+                    </div>
+                    <p><strong>Content:</strong> ${topic.content || 'Study this topic thoroughly'}</p>
+                    <p><strong>Estimated Time:</strong> ${topic.estimated_time || 30} minutes</p>
+                    ${topic.quiz_questions && topic.quiz_questions.length > 0 ? `
+                        <div class="quiz-questions">
+                            <strong>Practice Questions:</strong>
+                            ${topic.quiz_questions.map((q, i) => `
+                                <div class="question">${i + 1}. ${q.question}</div>
+                            `).join('')}
+                        </div>
+                    ` : ''}
+                </div>
+            `).join('')}
+        </body>
+        </html>`;
+    }
+
+    shareProgress() {
+        if (!this.currentPlan) {
+            this.showNotification('No study plan to share', 'warning');
+            return;
+        }
+
+        const shareData = {
+            title: 'My CramMaster AgentX Study Plan',
+            text: `Check out my AI-generated study plan with ${this.currentPlan?.studyPlan?.topics?.length || 0} topics!`,
+            url: window.location.href
+        };
+
+        if (navigator.share) {
+            navigator.share(shareData).then(() => {
+                this.showNotification('📱 Study plan shared successfully!', 'success');
+            }).catch(() => {
+                this.fallbackShare(shareData);
+            });
+        } else {
+            this.fallbackShare(shareData);
+        }
+    }
+
+    fallbackShare(shareData) {
+        const shareText = `${shareData.title}\n${shareData.text}\n${shareData.url}`;
+        navigator.clipboard.writeText(shareText).then(() => {
+            this.showNotification('📋 Share content copied to clipboard!', 'success');
+        }).catch(() => {
+            this.showNotification('Share: ' + shareText, 'info');
+        });
+    }
+
+    async startPomodoro() {
+        this.showNotification('🍅 Pomodoro timer integration coming soon!', 'info');
+    }
+
+    // Tab Management
+    initializeTabs() {
+        const tabButtons = document.querySelectorAll('.tab-btn');
+        const tabContents = document.querySelectorAll('.tab-content');
+        
+        tabButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                const targetTab = button.dataset.tab;
+                
+                // Remove active class from all tabs and contents
+                tabButtons.forEach(btn => btn.classList.remove('active'));
+                tabContents.forEach(content => content.classList.remove('active'));
+                
+                // Add active class to clicked tab and corresponding content
+                button.classList.add('active');
+                const targetContent = document.getElementById(targetTab + 'Tab');
+                if (targetContent) {
+                    targetContent.classList.add('active');
+                }
+                
+                // Update charts when dashboard tab is opened
+                if (targetTab === 'dashboard') {
+                    this.updateDashboard();
+                }
+                
+                // Update history when history tab is opened
+                if (targetTab === 'history') {
+                    this.updateHistory();
+                }
+            });
+        });
+    }
+
+    // Chart Initialization
+    initializeCharts() {
+        // Initialize progress chart
+        const progressCtx = document.getElementById('progressChart');
+        if (progressCtx) {
+            this.progressChart = new Chart(progressCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Completed', 'Remaining'],
+                    datasets: [{
+                        data: [0, 100],
+                        backgroundColor: ['#00ffff', 'rgba(255, 255, 255, 0.1)'],
+                        borderColor: ['#00ffff', 'rgba(255, 255, 255, 0.2)'],
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            labels: {
+                                color: '#ffffff'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Initialize quiz performance chart
+        const quizCtx = document.getElementById('quizChart');
+        if (quizCtx) {
+            this.quizChart = new Chart(quizCtx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Quiz Score %',
+                        data: [],
+                        borderColor: '#00ffff',
+                        backgroundColor: 'rgba(0, 255, 255, 0.1)',
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            labels: {
+                                color: '#ffffff'
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            ticks: {
+                                color: '#ffffff'
+                            }
+                        },
+                        y: {
+                            ticks: {
+                                color: '#ffffff'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    }
+
+    saveQuizResult(topic, score, totalQuestions, correctAnswers) {
+        const quizResult = {
+            id: Date.now(),
+            topic: topic,
+            score: score,
+            totalQuestions: totalQuestions,
+            correctAnswers: correctAnswers,
+            timestamp: new Date().toISOString(),
+            date: new Date().toLocaleDateString()
+        };
+        
+        this.quizHistory.unshift(quizResult);
+        
+        // Keep only last 50 results
+        if (this.quizHistory.length > 50) {
+            this.quizHistory = this.quizHistory.slice(0, 50);
+        }
+        
+        localStorage.setItem('crammaster_quiz_history', JSON.stringify(this.quizHistory));
+        this.updateStudyStreak();
+    }
+
+    saveTimerSession(duration, completed) {
+        const timerSession = {
+            id: Date.now(),
+            duration: duration,
+            completed: completed,
+            timestamp: new Date().toISOString(),
+            date: new Date().toLocaleDateString()
+        };
+        
+        this.timerHistory.unshift(timerSession);
+        
+        // Keep only last 100 sessions
+        if (this.timerHistory.length > 100) {
+            this.timerHistory = this.timerHistory.slice(0, 100);
+        }
+        
+        localStorage.setItem('crammaster_timer_history', JSON.stringify(this.timerHistory));
+        this.updateStudyStreak();
+    }
+
+    saveQuizResult(topic, score, totalQuestions, correctAnswers) {
+        const quizResult = {
+            id: Date.now(),
+            topic: topic,
+            score: score,
+            totalQuestions: totalQuestions,
+            correctAnswers: correctAnswers,
+            timestamp: new Date().toISOString(),
+            date: new Date().toLocaleDateString()
+        };
+        
+        this.quizHistory.unshift(quizResult);
+        
+        // Keep only last 50 results
+        if (this.quizHistory.length > 50) {
+            this.quizHistory = this.quizHistory.slice(0, 50);
+        }
+        
+        localStorage.setItem('crammaster_quiz_history', JSON.stringify(this.quizHistory));
+        this.updateStudyStreak();
+    }
+
+    saveTimerSession(duration, completed) {
+        const timerSession = {
+            id: Date.now(),
+            duration: duration,
+            completed: completed,
+            timestamp: new Date().toISOString(),
+            date: new Date().toLocaleDateString()
+        };
+        
+        this.timerHistory.unshift(timerSession);
+        
+        // Keep only last 100 sessions
+        if (this.timerHistory.length > 100) {
+            this.timerHistory = this.timerHistory.slice(0, 100);
+        }
+        
+        localStorage.setItem('crammaster_timer_history', JSON.stringify(this.timerHistory));
+        this.updateStudyStreak();
+    }
+
+    updateStudyStreak() {
+        const today = new Date().toDateString();
+        const lastStudyDate = this.studyStreak.lastStudyDate;
+        
+        if (lastStudyDate !== today) {
+            if (lastStudyDate === new Date(Date.now() - 86400000).toDateString()) {
+                // Consecutive day
+                this.studyStreak.current++;
+            } else {
+                // Reset streak
+                this.studyStreak.current = 1;
+            }
+            
+            this.studyStreak.lastStudyDate = today;
+            
+            if (this.studyStreak.current > this.studyStreak.best) {
+                this.studyStreak.best = this.studyStreak.current;
+            }
+            
+            localStorage.setItem('crammaster_study_streak', JSON.stringify(this.studyStreak));
+        }
+    }
+
+    async startTimer() {
+        if (this.timerInterval) return;
+        
+        // Initialize quiz functionality
+        this.initializeQuiz();
+        
+        // Fix timer display initialization
+        this.updateTimerDisplay();
+        
+        this.timerMinutes = 25;
+        this.timerSeconds = 0;
+        this.isTimerRunning = true;
+        
+        // Save timer start
+        this.currentTimerStart = Date.now();
+        
+        try {
+            const response = await fetch('http://localhost:3001/api/timer/start', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    user_id: this.getUserId(),
+                    topic: 'General Study',
+                    duration: 1500 // 25 minutes
+                })
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                this.currentSession = data.session_id;
+                this.addLogEntry('Pomodoro session started', 'info');
+            }
+        } catch (error) {
+            console.log('Timer API not available, using local timer');
+        }
+        
+        // Save to localStorage for persistence
+        localStorage.setItem('crammaster_timer_state', JSON.stringify({
+            isRunning: true,
+            startTime: this.currentTimerStart,
+            duration: 25 * 60
+        }));
+        
+        const startBtn = document.getElementById('startTimer');
+        if (startBtn) startBtn.innerHTML = '<i class="fas fa-pause"></i> Pause';
+        
+        this.timerInterval = setInterval(() => {
+            if (this.timerSeconds > 0) {
+                this.timerSeconds--;
+            } else if (this.timerMinutes > 0) {
+                this.timerMinutes--;
+                this.timerSeconds = 59;
+            } else {
+                this.completeTimer();
+                return;
+            }
+            
+            this.updateTimerDisplay();
+        }, 1000);
+    }
+
+    async completeTimer() {
+        this.stopTimer();
+        
+        if (this.currentSession) {
+            try {
+                await fetch('/api/timer/complete', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ session_id: this.currentSession })
+                });
+                this.addLogEntry('Pomodoro completed! Great focus! 🎯', 'success');
+            } catch (error) {
+                this.addLogEntry('Session completed locally', 'info');
+            }
+        }
+        
+        this.showNotification('🎉 Pomodoro completed! Great work!', 'success');
+            
+        // Save completed session
+        if (this.currentTimerStart) {
+            this.saveTimerSession(25 * 60, true);
+            this.currentTimerStart = null;
+        }
+            
+        // Trigger confetti
+        this.triggerConfetti();
+            
+        this.resetTimer();
+    }
+
+    pauseTimer() {
+        if (this.isTimerRunning) {
+            this.isTimerRunning = false;
+            clearInterval(this.timerInterval);
+            this.timerInterval = null;
+            
+            const startBtn = document.getElementById('startTimer');
+            if (startBtn) {
+                startBtn.innerHTML = '<i class="fas fa-play"></i> Start';
+            }
+            
+            // Clear localStorage state
+            localStorage.removeItem('crammaster_timer_state');
+        }
+    }
+
+    resetTimer() {
+        this.isTimerRunning = false;
+        clearInterval(this.timerInterval);
+        this.timerInterval = null;
+        this.timerMinutes = 25;
+        this.timerSeconds = 0;
+        this.updateTimerDisplay();
+        
+        const startBtn = document.getElementById('startTimer');
+        if (startBtn) {
+            startBtn.innerHTML = '<i class="fas fa-play"></i> Start';
+        }
+        
+        // Clear localStorage state
+        localStorage.removeItem('crammaster_timer_state');
+        
+        // Save incomplete session
+        if (this.currentTimerStart) {
+            const elapsed = Math.floor((Date.now() - this.currentTimerStart) / 1000);
+            this.saveTimerSession(elapsed, false);
+            this.currentTimerStart = null;
+        }
+    }
+
+    updateTimerDisplay() {
+        const minutesEl = document.getElementById('timerMinutes');
+        const progressEl = document.getElementById('timerProgress');
+        
+        if (minutesEl) {
+            minutesEl.textContent = this.timerMinutes.toString().padStart(2, '0');
+        }
+        
+        if (progressEl) {
+            const totalSeconds = 25 * 60; // 25 minutes
+            const currentSeconds = (this.timerMinutes * 60) + this.timerSeconds;
+            const progress = ((totalSeconds - currentSeconds) / totalSeconds) * 565.48; // Circle circumference
+            progressEl.style.strokeDashoffset = 565.48 - progress;
+        }
+    }
+
+    showLoading() {
+        const loadingSection = document.getElementById('loadingSection');
+        if (loadingSection) {
+            loadingSection.style.display = 'block';
+            loadingSection.classList.remove('hidden');
+        }
+    }
+
+    hideLoading() {
+        const loadingSection = document.getElementById('loadingSection');
+        if (loadingSection) {
+            loadingSection.style.display = 'none';
+            loadingSection.classList.add('hidden');
+        }
+    }
+
+    showResults() {
+        const resultsSection = document.getElementById('resultsSection');
+        if (resultsSection) {
+            resultsSection.style.display = 'block';
+            resultsSection.classList.remove('hidden');
+        }
+    }
+
+    startStudying() {
+        this.showNotification('🎓 Happy studying! Use the timer to stay focused.', 'success');
+        this.startTimer();
+    }
+
+    downloadPlan() {
+        this.exportPlan('json');
+    }
+
+    createNewPlan() {
+        // Reset form and hide results
+        const syllabusText = document.getElementById('syllabusText');
+        const studyTime = document.getElementById('studyTime');
+        const focusTopics = document.getElementById('focusTopics');
+        
+        if (syllabusText) syllabusText.value = '';
+        if (studyTime) studyTime.value = '';
+        if (focusTopics) focusTopics.value = '';
+        
+        const resultsSection = document.getElementById('resultsSection');
+        if (resultsSection) {
+            resultsSection.classList.add('hidden');
+        }
+        
+        this.hideStepVisualizer();
+        this.currentPlan = null;
+        
+        this.showNotification('Ready to create a new study plan! 📚', 'info');
+    }
+
+    showNotification(message, type = 'info') {
+        const notification = document.createElement('div');
+        notification.className = `notification ${type}`;
+        notification.textContent = message;
+        
+        document.body.appendChild(notification);
+        
+        setTimeout(() => {
+            notification.remove();
+        }, 4000);
+    }
+
+    addLogEntry(message, type = 'info') {
+        const workflowLogs = document.querySelector('#workflowLogs .workflow-logs-content');
+        if (workflowLogs) {
+            const logEntry = document.createElement('div');
+            logEntry.className = `log-entry ${type}`;
+            logEntry.innerHTML = `<span style="opacity: 0.7; font-size: 0.8em;">[${new Date().toLocaleTimeString()}]</span> ${message}`;
+            
+            workflowLogs.appendChild(logEntry);
+            
+            // Keep only last 15 entries
+            const entries = workflowLogs.querySelectorAll('.log-entry');
+            if (entries.length > 15) {
+                entries[0].remove();
+            }
+            
+            // Auto-scroll to bottom
+            workflowLogs.scrollTop = workflowLogs.scrollHeight;
+        }
+    }
+}
+
+// Initialize the UI when DOM is loaded
+document.addEventListener('DOMContentLoaded', () => {
+    console.log('DOM loaded, initializing UI...');
+    window.ui = new CramMasterAgentXUI();
+    
+    // Additional direct event binding as fallback
+    setTimeout(() => {
+        const generateBtn = document.getElementById('generateBtn');
+        console.log('Fallback check - Generate button:', generateBtn);
+        if (generateBtn && !generateBtn.hasAttribute('data-listener-added')) {
+            console.log('Adding fallback event listener');
+            generateBtn.addEventListener('click', function(e) {
+                console.log('Fallback listener triggered');
+                e.preventDefault();
+                if (window.ui) {
+                    window.ui.generateStudyPlan();
+                }
+            });
+            generateBtn.setAttribute('data-listener-added', 'true');
+        }
+    }, 100);
+});
+
+// Export for global access
+window.CramMasterAgentXUI = CramMasterAgentXUI;

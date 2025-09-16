@@ -1,0 +1,99 @@
+Data Structures and Algorithms - Course Syllabus
+
+Module 1: Introduction and Analysis
+• Introduction to Algorithms
+• Algorithm Analysis and Complexity
+• Asymptotic Notation (Big O, Omega, Theta)
+• Best, Average, and Worst Case Analysis
+• Space and Time Complexity
+
+Module 2: Basic Data Structures
+• Arrays and Dynamic Arrays
+• Linked Lists (Singly, Doubly, Circular)
+• Stacks and Stack Applications
+• Queues and Queue Variations
+• Priority Queues
+
+Module 3: Recursion and Divide & Conquer
+• Recursion Fundamentals
+• Recursive Problem Solving
+• Divide and Conquer Strategy
+• Master Theorem
+• Recurrence Relations
+
+Module 4: Sorting Algorithms
+• Elementary Sorting (Bubble, Selection, Insertion)
+• Advanced Sorting (Merge Sort, Quick Sort)
+• Heap Sort
+• Counting Sort and Radix Sort
+• Sorting Algorithm Comparison
+
+Module 5: Searching Algorithms
+• Linear Search
+• Binary Search and Variations
+• Interpolation Search
+• Exponential Search
+• Search in Rotated Arrays
+
+Module 6: Trees
+• Binary Trees
+• Binary Search Trees (BST)
+• AVL Trees
+• Red-Black Trees
+• Tree Traversals (Inorder, Preorder, Postorder)
+
+Module 7: Advanced Tree Structures
+• B-Trees and B+ Trees
+• Trie (Prefix Trees)
+• Segment Trees
+• Fenwick Trees (Binary Indexed Trees)
+• Suffix Trees
+
+Module 8: Hashing
+• Hash Functions
+• Collision Resolution Techniques
+• Open Addressing vs Chaining
+• Perfect Hashing
+• Applications of Hashing
+
+Module 9: Graphs
+• Graph Representation (Adjacency Matrix/List)
+• Graph Traversals (BFS, DFS)
+• Shortest Path Algorithms (Dijkstra, Bellman-Ford)
+• Minimum Spanning Tree (Kruskal, Prim)
+• Topological Sorting
+
+Module 10: Advanced Graph Algorithms
+• Floyd-Warshall Algorithm
+• Network Flow Problems
+• Maximum Bipartite Matching
+• Strongly Connected Components
+• Graph Coloring
+
+Module 11: Dynamic Programming
+• Introduction to Dynamic Programming
+• Overlapping Subproblems
+• Optimal Substructure
+• Memoization vs Tabulation
+• Classic DP Problems (Knapsack, LCS, LIS)
+
+Module 12: Greedy Algorithms
+• Greedy Strategy
+• Activity Selection Problem
+• Huffman Coding
+• Fractional Knapsack
+• Job Scheduling
+
+Module 13: String Algorithms
+• String Matching (Naive, KMP, Rabin-Karp)
+• String Hashing
+• Longest Common Subsequence
+• Edit Distance
+• Pattern Matching Applications
+
+Module 14: Advanced Topics
+• Backtracking
+• Branch and Bound
+• Approximation Algorithms
+• Randomized Algorithms
+• Parallel Algorithms

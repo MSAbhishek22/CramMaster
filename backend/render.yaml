@@ -1,0 +1,29 @@
+services:
+  - type: web
+    name: crammaster-agentx-backend
+    env: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: GROQ_API_KEY
+        sync: false
+      - key: TIDB_HOST
+        sync: false
+      - key: TIDB_PORT
+        value: 4000
+      - key: TIDB_USER
+        sync: false
+      - key: TIDB_PASSWORD
+        sync: false
+      - key: TIDB_DATABASE
+        value: crammaster
+      - key: DEMO_MODE
+        value: true
+      - key: FALLBACK_MODE
+        value: true
+    healthCheckPath: /api/health

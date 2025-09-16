@@ -1,0 +1,100 @@
+Database Management Systems - Complete Syllabus
+
+1. Introduction to Database Systems
+   - What is a Database?
+   - Database System vs File System
+   - Database System Concepts and Architecture
+   - Data Models and Database Languages
+   - Database System Environment
+
+2. Relational Model
+   - Structure of Relational Databases
+   - Database Schema
+   - Keys and Foreign Keys
+   - Schema Diagrams
+   - Relational Query Languages
+
+3. SQL Fundamentals
+   - Basic SQL Structure
+   - Set Operations
+   - Aggregate Functions
+   - Null Values
+   - Nested Subqueries
+
+4. Advanced SQL
+   - Join Expressions
+   - Views
+   - Transactions
+   - Integrity Constraints
+   - SQL Data Types and Schemas
+
+5. Database Design
+   - Entity-Relationship Model
+   - Design Process
+   - Design Issues
+   - E-R Diagrams
+   - Weak Entity Sets
+
+6. Relational Database Design
+   - Features of Good Relational Design
+   - Atomic Domains and First Normal Form
+   - Decomposition Using Functional Dependencies
+   - Functional Dependency Theory
+   - Algorithms for Decomposition
+
+7. Normalization
+   - First Normal Form (1NF)
+   - Second Normal Form (2NF)
+   - Third Normal Form (3NF)
+   - Boyce-Codd Normal Form (BCNF)
+   - Fourth Normal Form (4NF)
+
+8. Storage and File Structure
+   - Overview of Physical Storage Media
+   - Magnetic Disks
+   - RAID
+   - File Organization
+   - Organization of Records in Files
+
+9. Indexing and Hashing
+   - Basic Concepts
+   - Ordered Indices
+   - B+ Tree Index Files
+   - B+ Tree Extensions
+   - Hash Indices
+
+10. Query Processing and Optimization
+    - Overview
+    - Measures of Query Cost
+    - Selection Operation
+    - Sorting
+    - Join Operation
+    - Query Optimization
+
+11. Transaction Management
+    - Transaction Concept
+    - Transaction State
+    - Implementation of Atomicity and Durability
+    - Concurrent Executions
+    - Serializability
+
+12. Concurrency Control
+    - Lock-Based Protocols
+    - Timestamp-Based Protocols
+    - Validation-Based Protocols
+    - Multiple Granularity
+    - Multiversion Schemes
+
+13. Recovery System
+    - Failure Classification
+    - Storage Structure
+    - Recovery and Atomicity
+    - Log-Based Recovery
+    - Shadow Paging
+
+14. NoSQL Databases
+    - Introduction to NoSQL
+    - Document Databases
+    - Key-Value Stores
+    - Column-Family
+    - Graph Databases
